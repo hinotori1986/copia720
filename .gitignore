@@ -1,0 +1,26 @@
+# Artefactos de compilación
+/build/
+build/
+*.o
+*.a
+*.so
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*_autogen/
+
+# Ejecutable
+copia720
+
+# Editores / IDE
+*.swp
+*~
+.vscode/
+.idea/
+.cache/
+
+# Sistema
+.DS_Store
