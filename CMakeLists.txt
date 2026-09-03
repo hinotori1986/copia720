@@ -66,3 +66,17 @@ add_executable(copia720
 target_include_directories(copia720 PRIVATE src/core src/gui)
 target_link_libraries(copia720 PRIVATE copia720core Qt${QT_VERSION_MAJOR}::Widgets)
 target_compile_options(copia720 PRIVATE -Wall -Wextra)
+
+# --- Reglas de instalación (necesarias para empaquetar: AppImage, .deb, .rpm)
+# Definen dónde va cada archivo cuando se hace "make install". linuxdeploy y
+# CPack se apoyan en esto para construir los paquetes.
+include(GNUInstallDirs)
+
+install(TARGETS copia720
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install(FILES packaging/copia720.desktop
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+
+install(FILES packaging/copia720.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps)

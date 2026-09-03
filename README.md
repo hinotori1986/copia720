@@ -46,6 +46,23 @@ densidad).
 
 ## Instalación
 
+### Opción rápida: AppImage (Linux 64 bits)
+
+Si sólo quieres usar el programa en un equipo de 64 bits sin compilar, descarga
+el archivo `copia720-x86_64.AppImage` de la sección
+[Releases](https://github.com/hinotori1986/copia720/releases), dale permiso de
+ejecución y ábrelo:
+
+```sh
+chmod +x copia720-x86_64.AppImage
+./copia720-x86_64.AppImage
+```
+
+Lleva todo lo necesario dentro (incluido Qt). Para equipos de 32 bits (como
+antiX) o para desarrollar, compila desde el código fuente (abajo).
+
+### Compilar desde el código fuente
+
 Descarga el proyecto (o clónalo con git):
 
 ```sh

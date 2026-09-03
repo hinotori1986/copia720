@@ -15,6 +15,12 @@ Makefile
 # Ejecutable
 copia720
 
+# Empaquetado (AppImage y sus herramientas/temporales)
+*.AppImage
+/AppDir/
+/.appimage-tools/
+/build-appimage/
+
 # Editores / IDE
 *.swp
 *~

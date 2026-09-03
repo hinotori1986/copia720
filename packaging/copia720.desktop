@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=COPIA720
+GenericName=Herramienta de disquetes
+Comment=Guardar, restaurar y explorar disquetes de 3½ (FAT12)
+Comment[en]=Save, restore and explore 3.5" floppy disks (FAT12)
+Exec=copia720
+Icon=copia720
+Terminal=false
+Categories=Utility;System;Archiving;
+Keywords=floppy;disquete;disk;fat12;greaseweazle;720;1440;
