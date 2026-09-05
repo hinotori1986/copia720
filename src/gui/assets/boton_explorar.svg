@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect class="frame" x="10" y="10" width="180" height="180" rx="16" fill="#3a6ea5" stroke="#264f78" stroke-width="3"/>
+  <path d="M140 10 L190 60 L190 33 Q190 10 167 10 Z" fill="#264f78"/>
+  <rect x="57" y="10" width="76" height="50" fill="#c9d4e0"/>
+  <rect x="110" y="17" width="15" height="37" rx="2.5" fill="#8a98a8"/>
+  <rect x="33" y="77" width="134" height="106" rx="7" fill="#f5f5f0"/>
+  <rect x="33" y="100" width="134" height="33" fill="#1565a0"/>
+  <text x="100" y="123" font-family="sans-serif" font-size="20" font-weight="700" text-anchor="middle" fill="#ffffff">EXPLORAR</text>
+  <text x="100" y="160" font-family="sans-serif" font-size="15" text-anchor="middle" fill="#5a6b7d">ver archivos</text>
+</svg>

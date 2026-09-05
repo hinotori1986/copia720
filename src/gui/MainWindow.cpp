@@ -2,6 +2,7 @@
 #include "MainWindow.h"
 
 #include "DeviceDialog.h"
+#include "DiskButton.h"
 #include "ExplorerDialog.h"
 #include "FloppyWorker.h"
 #include "ProgressDialog.h"
@@ -11,6 +12,7 @@
 #include <QFormLayout>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QMenuBar>
@@ -91,41 +93,43 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     lay->addWidget(selBox);
 
-    // --- botones de acción ---
-    auto makeButton = [&](const QString &text, const QString &desc,
-                          void (MainWindow::*slot)()) {
-        auto *box = new QGroupBox;
-        auto *bl = new QVBoxLayout(box);
-        auto *btn = new QPushButton(text);
-        btn->setMinimumHeight(40);
-        connect(btn, &QPushButton::clicked, this, slot);
-        bl->addWidget(btn);
-        auto *d = new QLabel(desc);
-        d->setWordWrap(true);
-        d->setStyleSheet(QStringLiteral("color: gray;"));
-        bl->addWidget(d);
-        lay->addWidget(box);
+    // --- botones de acción (disquetes) ---
+    auto *btnGrid = new QGridLayout;
+    btnGrid->setSpacing(16);
+
+    auto makeButton = [&](const QString &basename, const QString &tip,
+                          const QString &desc, void (MainWindow::*slot)(),
+                          int row, int col) {
+        (void)desc;   // la descripción va ahora en el tooltip (tip), no debajo
+        auto *btn = new DiskButton(basename, tip);
+        btn->setFixedSize(150, 150);
+        connect(btn, &QAbstractButton::clicked, this, slot);
+        btnGrid->addWidget(btn, row, col, Qt::AlignHCenter);
     };
 
-    makeButton(tr("Crear imagen desde disquete real"),
-               tr("Lee un disquete físico completo y lo guarda en un archivo "
-                  ".img en el disco duro."),
-               &MainWindow::onCreateImageFromFloppy);
+    btnGrid->setVerticalSpacing(20);
 
-    makeButton(tr("Copiar imagen a disquete real"),
-               tr("Graba un archivo .img sobre un disquete físico. Con la "
-                  "disquetera clásica, opción de formatear al vuelo y verificar."),
-               &MainWindow::onWriteImageToFloppy);
+    makeButton(QStringLiteral("crear"),
+               tr("Crear imagen desde disquete real: lee un disquete físico "
+                  "completo y lo guarda en un archivo .img."),
+               QString(), &MainWindow::onCreateImageFromFloppy, 0, 0);
 
-    makeButton(tr("Explorar disquete"),
-               tr("Abre el contenido FAT12 de una imagen o de un disquete "
-                  "físico y permite extraer archivos."),
-               &MainWindow::onExploreFloppy);
+    makeButton(QStringLiteral("copiar"),
+               tr("Copiar imagen a disquete real: graba un archivo .img sobre "
+                  "un disquete. Opción de formatear al vuelo y verificar."),
+               QString(), &MainWindow::onWriteImageToFloppy, 0, 1);
 
-    makeButton(tr("Formatear disquete"),
-               tr("Formateo de bajo nivel, pista a pista. Sólo con la "
-                  "disquetera clásica (FDC)."),
-               &MainWindow::onFormatFloppy);
+    makeButton(QStringLiteral("explorar"),
+               tr("Explorar disquete: abre el contenido FAT12 de una imagen o "
+                  "de un disquete físico y permite extraer archivos."),
+               QString(), &MainWindow::onExploreFloppy, 1, 0);
+
+    makeButton(QStringLiteral("formatear"),
+               tr("Formatear disquete: formateo de bajo nivel, pista a pista. "
+                  "Sólo con la disquetera clásica (FDC)."),
+               QString(), &MainWindow::onFormatFloppy, 1, 1);
+
+    lay->addLayout(btnGrid);
 
     statusHint_ = new QLabel;
     statusHint_->setWordWrap(true);
@@ -543,11 +547,15 @@ void MainWindow::showHowTo() {
 }
 
 void MainWindow::showAbout() {
+#ifndef COPIA720_VERSION
+#define COPIA720_VERSION "desconocida"
+#endif
     QMessageBox::about(this, tr("Acerca de COPIA720"),
-        tr("<h3>COPIA720</h3>"
+        tr("<h3>COPIA720 <span style='color:gray'>v%1</span></h3>"
            "<p>Guardar, restaurar y explorar disquetes de 3½ (720 KB y "
            "1.44 MB), con FAT12.</p>"
            "<p>Reescritura moderna del COPIA720 de F.J. Martos (1995), con "
            "núcleo en C y interfaz Qt. Soporta disquetera clásica (FDC) y "
-           "Greaseweazle.</p>"));
+           "Greaseweazle.</p>")
+        .arg(QStringLiteral(COPIA720_VERSION)));
 }

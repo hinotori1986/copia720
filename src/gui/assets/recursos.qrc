@@ -1,0 +1,13 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/botones">
+    <file alias="boton_crear.svg">boton_crear.svg</file>
+    <file alias="boton_crear_pulsado.svg">boton_crear_pulsado.svg</file>
+    <file alias="boton_copiar.svg">boton_copiar.svg</file>
+    <file alias="boton_copiar_pulsado.svg">boton_copiar_pulsado.svg</file>
+    <file alias="boton_explorar.svg">boton_explorar.svg</file>
+    <file alias="boton_explorar_pulsado.svg">boton_explorar_pulsado.svg</file>
+    <file alias="boton_formatear.svg">boton_formatear.svg</file>
+    <file alias="boton_formatear_pulsado.svg">boton_formatear_pulsado.svg</file>
+  </qresource>
+</RCC>
