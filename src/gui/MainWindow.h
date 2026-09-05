@@ -43,8 +43,20 @@ private:
     FloppyBackend currentBackend() const;
     const FloppyGeometry &currentGeom() const;
 
-    QComboBox *backendCombo_ = nullptr;
-    QComboBox *formatCombo_ = nullptr;
+    /* Construye la cabecera azul con el título y las pastillas de selección. */
+    QWidget *buildHeader();
+    /* Refresca el aspecto "on/off" de las pastillas según los combos ocultos. */
+    void refreshPills();
+
+    QComboBox *backendCombo_ = nullptr;   // lógica (oculto)
+    QComboBox *formatCombo_ = nullptr;     // lógica (oculto)
+
+    // Pastillas visibles de la cabecera.
+    class QPushButton *pillFdc_ = nullptr;
+    class QPushButton *pillGw_ = nullptr;
+    class QPushButton *pill720_ = nullptr;
+    class QPushButton *pill1440_ = nullptr;
+
     QLabel *statusHint_ = nullptr;
 };
 

@@ -10,4 +10,7 @@
     <file alias="boton_formatear.svg">boton_formatear.svg</file>
     <file alias="boton_formatear_pulsado.svg">boton_formatear_pulsado.svg</file>
   </qresource>
+  <qresource prefix="/app">
+    <file alias="icono.svg">icono.svg</file>
+  </qresource>
 </RCC>

@@ -18,7 +18,7 @@
 #   Qt6:  sudo apt install qt6-base-dev cmake g++
 
 cmake_minimum_required(VERSION 3.16)
-project(copia720 VERSION 1.1 LANGUAGES C CXX)
+project(copia720 VERSION 1.2 LANGUAGES C CXX)
 
 # Hacer la versión accesible desde el código C++ como la macro COPIA720_VERSION.
 add_compile_definitions(COPIA720_VERSION="${PROJECT_VERSION}")

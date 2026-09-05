@@ -14,10 +14,15 @@
 #include <QFileInfo>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
+#include <QSvgRenderer>
 #include <QVBoxLayout>
 
 #include <vector>
@@ -66,32 +71,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     lay->setSpacing(14);
     lay->setContentsMargins(24, 24, 24, 24);
 
-    auto *title = new QLabel(
-        QStringLiteral("<h2>COPIA720</h2>"
-                       "<p>Guardar y restaurar disquetes de 3½, y explorar su "
-                       "contenido. Compatible con disquetera clásica (FDC) y "
-                       "con Greaseweazle.</p>"));
-    title->setWordWrap(true);
-    lay->addWidget(title);
-
-    // --- selectores de backend y formato ---
-    auto *selBox = new QGroupBox(tr("Disquetera y formato"));
-    auto *form = new QFormLayout(selBox);
-
+    // Combos ocultos: mantienen la lógica de selección (currentBackend /
+    // currentGeom leen de ellos). La interfaz visible son las pastillas de
+    // la cabecera, que actualizan estos combos.
     backendCombo_ = new QComboBox;
     backendCombo_->addItem(tr("Disquetera clásica (controlador FDC, /dev/fd0)"), 0);
     backendCombo_->addItem(tr("Greaseweazle (USB)"), 1);
+    backendCombo_->setVisible(false);
     connect(backendCombo_,
             static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &MainWindow::onBackendChanged);
-    form->addRow(tr("Usar:"), backendCombo_);
 
     formatCombo_ = new QComboBox;
     formatCombo_->addItem(tr("720 KB (doble densidad)"), 720);
     formatCombo_->addItem(tr("1.44 MB (alta densidad)"), 1440);
-    form->addRow(tr("Formato:"), formatCombo_);
+    formatCombo_->setVisible(false);
 
-    lay->addWidget(selBox);
+    // Cabecera azul con título y pastillas.
+    lay->addWidget(buildHeader());
 
     // --- botones de acción (disquetes) ---
     auto *btnGrid = new QGridLayout;
@@ -138,9 +135,144 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     lay->addStretch(1);
     setCentralWidget(central);
-    setMinimumWidth(520);
+    setMinimumWidth(560);
 
     onBackendChanged();   // ajustar avisos iniciales
+    refreshPills();
+}
+
+// ---------------------------------------------------------------------------
+// Cabecera azul con título y pastillas de selección
+// ---------------------------------------------------------------------------
+
+QWidget *MainWindow::buildHeader() {
+    auto *header = new QWidget;
+    header->setObjectName(QStringLiteral("header"));
+    // Fondo azul del disquete, esquinas redondeadas.
+    header->setStyleSheet(QStringLiteral(
+        "#header { background: #3a6ea5; border-radius: 12px; }"));
+
+    auto *outer = new QVBoxLayout(header);
+    outer->setContentsMargins(18, 16, 18, 16);
+    outer->setSpacing(14);
+
+    // --- fila del título ---
+    auto *titleRow = new QHBoxLayout;
+    titleRow->setSpacing(10);
+
+    auto *logo = new QLabel;
+    // Mini disquete como logo, desde el icono de la app empotrado.
+    {
+        QSvgRenderer r(QStringLiteral(":/app/icono.svg"));
+        if (r.isValid()) {
+            QPixmap pm(26, 26);
+            pm.fill(Qt::transparent);
+            QPainter p(&pm);
+            r.render(&p);
+            logo->setPixmap(pm);
+        }
+    }
+    titleRow->addWidget(logo);
+
+    auto *name = new QLabel(QStringLiteral("COPIA720"));
+    name->setStyleSheet(QStringLiteral(
+        "color: white; font-size: 17px; font-weight: bold;"));
+    titleRow->addWidget(name);
+
+    auto *sub = new QLabel(tr("disquetes de 3½ · FAT12"));
+    sub->setStyleSheet(QStringLiteral("color: #c9d9ec; font-size: 12px;"));
+    titleRow->addStretch(1);
+    titleRow->addWidget(sub);
+    outer->addLayout(titleRow);
+
+    // --- filas de pastillas (dos filas: disquetera y formato) ---
+    auto lblStyle = QStringLiteral(
+        "color: #c9d9ec; font-size: 12px; font-weight: 500;");
+
+    // Estilo común de las pastillas.
+    auto makePill = [this](const QString &text, int minW) {
+        auto *b = new QPushButton(text);
+        b->setCheckable(true);
+        b->setCursor(Qt::PointingHandCursor);
+        b->setMinimumWidth(minW);
+        b->setMinimumHeight(30);
+        b->setStyleSheet(QStringLiteral(
+            "QPushButton { border: 2px solid white; background: transparent;"
+            "  color: white; font-size: 12px; font-weight: bold;"
+            "  padding: 4px 16px; }"
+            "QPushButton:checked { background: white; color: #264f78; }"));
+        return b;
+    };
+
+    // Fila 1: disquetera
+    auto *devRow = new QHBoxLayout;
+    devRow->setSpacing(10);
+    auto *lblDev = new QLabel(tr("Disquetera"));
+    lblDev->setStyleSheet(lblStyle);
+    lblDev->setFixedWidth(80);
+    devRow->addWidget(lblDev);
+
+    pillFdc_ = makePill(tr("Clásica FDC"), 120);
+    pillGw_  = makePill(tr("Greaseweazle"), 130);
+    pillFdc_->setStyleSheet(pillFdc_->styleSheet() +
+        QStringLiteral("QPushButton{border-top-left-radius:8px;border-bottom-left-radius:8px;border-right:none;}"));
+    pillGw_->setStyleSheet(pillGw_->styleSheet() +
+        QStringLiteral("QPushButton{border-top-right-radius:8px;border-bottom-right-radius:8px;}"));
+    auto *devGroup = new QHBoxLayout;
+    devGroup->setSpacing(0);
+    devGroup->addWidget(pillFdc_);
+    devGroup->addWidget(pillGw_);
+    devRow->addLayout(devGroup);
+    devRow->addStretch(1);
+    outer->addLayout(devRow);
+
+    // Fila 2: formato
+    auto *fmtRow = new QHBoxLayout;
+    fmtRow->setSpacing(10);
+    auto *lblFmt = new QLabel(tr("Formato"));
+    lblFmt->setStyleSheet(lblStyle);
+    lblFmt->setFixedWidth(80);
+    fmtRow->addWidget(lblFmt);
+
+    pill720_  = makePill(tr("720 KB"), 120);
+    pill1440_ = makePill(tr("1.44 MB"), 130);
+    pill720_->setStyleSheet(pill720_->styleSheet() +
+        QStringLiteral("QPushButton{border-top-left-radius:8px;border-bottom-left-radius:8px;border-right:none;}"));
+    pill1440_->setStyleSheet(pill1440_->styleSheet() +
+        QStringLiteral("QPushButton{border-top-right-radius:8px;border-bottom-right-radius:8px;}"));
+    auto *fmtGroup = new QHBoxLayout;
+    fmtGroup->setSpacing(0);
+    fmtGroup->addWidget(pill720_);
+    fmtGroup->addWidget(pill1440_);
+    fmtRow->addLayout(fmtGroup);
+    fmtRow->addStretch(1);
+    outer->addLayout(fmtRow);
+
+    // Conexiones: cada pastilla actualiza el combo oculto correspondiente.
+    connect(pillFdc_, &QPushButton::clicked, this, [this]{
+        backendCombo_->setCurrentIndex(0); refreshPills();
+    });
+    connect(pillGw_, &QPushButton::clicked, this, [this]{
+        backendCombo_->setCurrentIndex(1); refreshPills();
+    });
+    connect(pill720_, &QPushButton::clicked, this, [this]{
+        formatCombo_->setCurrentIndex(0); refreshPills();
+    });
+    connect(pill1440_, &QPushButton::clicked, this, [this]{
+        formatCombo_->setCurrentIndex(1); refreshPills();
+    });
+
+    return header;
+}
+
+void MainWindow::refreshPills() {
+    if (!pillFdc_) return;
+    bool gw = (backendCombo_->currentIndex() == 1);
+    pillFdc_->setChecked(!gw);
+    pillGw_->setChecked(gw);
+    bool hd = (formatCombo_->currentIndex() == 1);
+    pill720_->setChecked(!hd);
+    pill1440_->setChecked(hd);
 }
 
 // ---------------------------------------------------------------------------
