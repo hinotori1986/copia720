@@ -31,6 +31,7 @@ typedef struct {
 } FloppyGeometry;
 
 /* Formatos predefinidos. */
+extern const FloppyGeometry FLOPPY_360;
 extern const FloppyGeometry FLOPPY_720;
 extern const FloppyGeometry FLOPPY_1440;
 

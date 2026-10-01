@@ -22,6 +22,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
+#include <QSettings>
 #include <QSvgRenderer>
 #include <QVBoxLayout>
 
@@ -47,8 +48,9 @@ FloppyBackend MainWindow::currentBackend() const {
 }
 
 const FloppyGeometry &MainWindow::currentGeom() const {
-    if (formatCombo_ && formatCombo_->currentData().toInt() == 1440)
-        return FLOPPY_1440;
+    int fmt = formatCombo_ ? formatCombo_->currentData().toInt() : 720;
+    if (fmt == 1440) return FLOPPY_1440;
+    if (fmt == 360)  return FLOPPY_360;
     return FLOPPY_720;
 }
 
@@ -83,6 +85,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             this, &MainWindow::onBackendChanged);
 
     formatCombo_ = new QComboBox;
+    formatCombo_->addItem(tr("360 KB (doble densidad, 40 pistas)"), 360);
     formatCombo_->addItem(tr("720 KB (doble densidad)"), 720);
     formatCombo_->addItem(tr("1.44 MB (alta densidad)"), 1440);
     formatCombo_->setVisible(false);
@@ -137,6 +140,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(central);
     setMinimumWidth(560);
 
+    loadSettings();       // recuperar backend y formato elegidos la última vez
     onBackendChanged();   // ajustar avisos iniciales
     refreshPills();
 }
@@ -195,18 +199,25 @@ QWidget *MainWindow::buildHeader() {
         b->setCheckable(true);
         b->setCursor(Qt::PointingHandCursor);
         b->setMinimumWidth(minW);
-        b->setMinimumHeight(30);
+        b->setMinimumHeight(32);
+        // Sin marcar: contorno blanco fino sobre el azul.
+        // Marcada: fondo blanco, texto azul oscuro y MARCO AMARILLO grueso,
+        // el mismo amarillo del resaltado de los botones, para que se vea
+        // sin lugar a dudas cuál está elegida.
         b->setStyleSheet(QStringLiteral(
-            "QPushButton { border: 2px solid white; background: transparent;"
+            "QPushButton { border: 2px solid rgba(255,255,255,0.6);"
+            "  border-radius: 8px; background: transparent;"
             "  color: white; font-size: 12px; font-weight: bold;"
             "  padding: 4px 16px; }"
-            "QPushButton:checked { background: white; color: #264f78; }"));
+            "QPushButton:hover { border-color: white; }"
+            "QPushButton:checked { background: white; color: #264f78;"
+            "  border: 3px solid #f2b705; }"));
         return b;
     };
 
     // Fila 1: disquetera
     auto *devRow = new QHBoxLayout;
-    devRow->setSpacing(10);
+    devRow->setSpacing(8);
     auto *lblDev = new QLabel(tr("Disquetera"));
     lblDev->setStyleSheet(lblStyle);
     lblDev->setFixedWidth(80);
@@ -214,52 +225,43 @@ QWidget *MainWindow::buildHeader() {
 
     pillFdc_ = makePill(tr("Clásica FDC"), 120);
     pillGw_  = makePill(tr("Greaseweazle"), 130);
-    pillFdc_->setStyleSheet(pillFdc_->styleSheet() +
-        QStringLiteral("QPushButton{border-top-left-radius:8px;border-bottom-left-radius:8px;border-right:none;}"));
-    pillGw_->setStyleSheet(pillGw_->styleSheet() +
-        QStringLiteral("QPushButton{border-top-right-radius:8px;border-bottom-right-radius:8px;}"));
-    auto *devGroup = new QHBoxLayout;
-    devGroup->setSpacing(0);
-    devGroup->addWidget(pillFdc_);
-    devGroup->addWidget(pillGw_);
-    devRow->addLayout(devGroup);
+    devRow->addWidget(pillFdc_);
+    devRow->addWidget(pillGw_);
     devRow->addStretch(1);
     outer->addLayout(devRow);
 
     // Fila 2: formato
     auto *fmtRow = new QHBoxLayout;
-    fmtRow->setSpacing(10);
+    fmtRow->setSpacing(8);
     auto *lblFmt = new QLabel(tr("Formato"));
     lblFmt->setStyleSheet(lblStyle);
     lblFmt->setFixedWidth(80);
     fmtRow->addWidget(lblFmt);
 
-    pill720_  = makePill(tr("720 KB"), 120);
-    pill1440_ = makePill(tr("1.44 MB"), 130);
-    pill720_->setStyleSheet(pill720_->styleSheet() +
-        QStringLiteral("QPushButton{border-top-left-radius:8px;border-bottom-left-radius:8px;border-right:none;}"));
-    pill1440_->setStyleSheet(pill1440_->styleSheet() +
-        QStringLiteral("QPushButton{border-top-right-radius:8px;border-bottom-right-radius:8px;}"));
-    auto *fmtGroup = new QHBoxLayout;
-    fmtGroup->setSpacing(0);
-    fmtGroup->addWidget(pill720_);
-    fmtGroup->addWidget(pill1440_);
-    fmtRow->addLayout(fmtGroup);
+    pill360_  = makePill(tr("360 KB"), 90);
+    pill720_  = makePill(tr("720 KB"), 90);
+    pill1440_ = makePill(tr("1.44 MB"), 95);
+    fmtRow->addWidget(pill360_);
+    fmtRow->addWidget(pill720_);
+    fmtRow->addWidget(pill1440_);
     fmtRow->addStretch(1);
     outer->addLayout(fmtRow);
 
     // Conexiones: cada pastilla actualiza el combo oculto correspondiente.
     connect(pillFdc_, &QPushButton::clicked, this, [this]{
-        backendCombo_->setCurrentIndex(0); refreshPills();
+        backendCombo_->setCurrentIndex(0); refreshPills(); saveSettings();
     });
     connect(pillGw_, &QPushButton::clicked, this, [this]{
-        backendCombo_->setCurrentIndex(1); refreshPills();
+        backendCombo_->setCurrentIndex(1); refreshPills(); saveSettings();
+    });
+    connect(pill360_, &QPushButton::clicked, this, [this]{
+        formatCombo_->setCurrentIndex(0); refreshPills(); saveSettings();
     });
     connect(pill720_, &QPushButton::clicked, this, [this]{
-        formatCombo_->setCurrentIndex(0); refreshPills();
+        formatCombo_->setCurrentIndex(1); refreshPills(); saveSettings();
     });
     connect(pill1440_, &QPushButton::clicked, this, [this]{
-        formatCombo_->setCurrentIndex(1); refreshPills();
+        formatCombo_->setCurrentIndex(2); refreshPills(); saveSettings();
     });
 
     return header;
@@ -270,9 +272,30 @@ void MainWindow::refreshPills() {
     bool gw = (backendCombo_->currentIndex() == 1);
     pillFdc_->setChecked(!gw);
     pillGw_->setChecked(gw);
-    bool hd = (formatCombo_->currentIndex() == 1);
-    pill720_->setChecked(!hd);
-    pill1440_->setChecked(hd);
+    int fmt = formatCombo_->currentIndex();   // 0=360, 1=720, 2=1440
+    pill360_->setChecked(fmt == 0);
+    pill720_->setChecked(fmt == 1);
+    pill1440_->setChecked(fmt == 2);
+}
+
+// ---------------------------------------------------------------------------
+// Persistencia de las opciones (QSettings guarda en la config del usuario)
+// ---------------------------------------------------------------------------
+
+void MainWindow::saveSettings() {
+    QSettings s;
+    s.setValue(QStringLiteral("backend"), backendCombo_->currentIndex());
+    s.setValue(QStringLiteral("format"), formatCombo_->currentIndex());
+}
+
+void MainWindow::loadSettings() {
+    QSettings s;
+    int b = s.value(QStringLiteral("backend"), 0).toInt();
+    int f = s.value(QStringLiteral("format"), 1).toInt();   // 1 = 720K por defecto
+    if (b >= 0 && b < backendCombo_->count())
+        backendCombo_->setCurrentIndex(b);
+    if (f >= 0 && f < formatCombo_->count())
+        formatCombo_->setCurrentIndex(f);
 }
 
 // ---------------------------------------------------------------------------

@@ -13,11 +13,21 @@ Desde la raíz del proyecto, en un equipo de **64 bits**:
 sh scripts/construir-appimage.sh
 ```
 
-El script:
-1. Descarga las herramientas de empaquetado (`linuxdeploy` y su plugin de Qt).
-2. Compila el proyecto.
-3. Mete Qt y demás dependencias dentro.
-4. Genera `copia720-x86_64.AppImage` en la raíz del proyecto.
+Un solo comando. El script hace todo automáticamente:
+1. Localiza `qmake6` y fuerza su uso (evita que el empaquetado coja Qt5 por error).
+2. Descarga las herramientas de empaquetado (`linuxdeploy` y su plugin de Qt).
+3. Las extrae para funcionar aunque el sistema no tenga FUSE.
+4. Compila el proyecto.
+5. Mete Qt y demás dependencias dentro (incluida la librería SVG de los botones).
+6. Genera `copia720-x86_64.AppImage` en la raíz del proyecto.
+
+Requisitos: lo necesario para compilar (compilador, CMake y Qt6 incluido el
+módulo Svg y `qmake6`), más `wget` o `curl`. En Fedora/Nobara:
+
+```sh
+sudo dnf install qt6-qtbase-devel qt6-qtsvg-devel qt6-qtdeclarative-devel cmake gcc-c++ wget
+```
+
 
 Requisitos: además de lo necesario para compilar (compilador, CMake, Qt), hace
 falta `wget` o `curl`. Si tu sistema no trae FUSE, el script usa un modo de

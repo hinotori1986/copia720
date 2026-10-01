@@ -47,6 +47,9 @@ private:
     QWidget *buildHeader();
     /* Refresca el aspecto "on/off" de las pastillas según los combos ocultos. */
     void refreshPills();
+    /* Persistencia de las opciones elegidas (disquetera y formato). */
+    void saveSettings();
+    void loadSettings();
 
     QComboBox *backendCombo_ = nullptr;   // lógica (oculto)
     QComboBox *formatCombo_ = nullptr;     // lógica (oculto)
@@ -54,6 +57,7 @@ private:
     // Pastillas visibles de la cabecera.
     class QPushButton *pillFdc_ = nullptr;
     class QPushButton *pillGw_ = nullptr;
+    class QPushButton *pill360_ = nullptr;
     class QPushButton *pill720_ = nullptr;
     class QPushButton *pill1440_ = nullptr;
 
