@@ -52,9 +52,14 @@ bool gw_available(void) {
 const char *gw_format_for(const FloppyGeometry *g) {
     if (!g) return NULL;
     size_t total = floppy_total_bytes(g);
-    if (total == 737280) return "ibm.720";    /* 720 KB */
-    if (total == 1474560) return "ibm.1440";  /* 1.44 MB */
-    if (total == 368640) return "ibm.360";    /* 360 KB */
+    /* COPIA720 es una herramienta para MSX, así que para los formatos nativos
+     * de MSX usamos los perfiles específicos de Greaseweazle (msx.*), que
+     * están afinados para cómo los MSX escriben los disquetes (gap, rate...),
+     * en lugar de los genéricos ibm.*. El de 360 KB en MSX es de UNA cara
+     * (msx.1dd: 80 pistas, 1 cara); el de 720 KB es de dos (msx.2dd). */
+    if (total == 737280) return "msx.2dd";    /* 720 KB (2 caras) */
+    if (total == 368640) return "msx.1dd";    /* 360 KB (1 cara)  */
+    if (total == 1474560) return "ibm.1440";  /* 1.44 MB (no nativo de MSX) */
     if (total == 1228800) return "ibm.1200";  /* 1.2 MB */
     return NULL;
 }

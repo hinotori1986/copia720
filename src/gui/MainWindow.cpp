@@ -37,6 +37,12 @@ extern "C" {
 #include "floppy_greaseweazle.h"
 }
 
+// Versión del programa, inyectada por CMake (project VERSION). Fallback por si
+// se compilara sin esa definición.
+#ifndef COPIA720_VERSION
+#define COPIA720_VERSION "desconocida"
+#endif
+
 // ---------------------------------------------------------------------------
 // Backend y geometría seleccionados
 // ---------------------------------------------------------------------------
@@ -85,8 +91,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             this, &MainWindow::onBackendChanged);
 
     formatCombo_ = new QComboBox;
-    formatCombo_->addItem(tr("360 KB (doble densidad, 40 pistas)"), 360);
-    formatCombo_->addItem(tr("720 KB (doble densidad)"), 720);
+    formatCombo_->addItem(tr("360 KB (MSX, una cara)"), 360);
+    formatCombo_->addItem(tr("720 KB (MSX, doble cara)"), 720);
     formatCombo_->addItem(tr("1.44 MB (alta densidad)"), 1440);
     formatCombo_->setVisible(false);
 
@@ -183,7 +189,8 @@ QWidget *MainWindow::buildHeader() {
         "color: white; font-size: 17px; font-weight: bold;"));
     titleRow->addWidget(name);
 
-    auto *sub = new QLabel(tr("disquetes de 3½ · FAT12"));
+    auto *sub = new QLabel(tr("disquetes de 3½ · FAT12  ·  v%1")
+                               .arg(QStringLiteral(COPIA720_VERSION)));
     sub->setStyleSheet(QStringLiteral("color: #c9d9ec; font-size: 12px;"));
     titleRow->addStretch(1);
     titleRow->addWidget(sub);
@@ -702,9 +709,6 @@ void MainWindow::showHowTo() {
 }
 
 void MainWindow::showAbout() {
-#ifndef COPIA720_VERSION
-#define COPIA720_VERSION "desconocida"
-#endif
     QMessageBox::about(this, tr("Acerca de COPIA720"),
         tr("<h3>COPIA720 <span style='color:gray'>v%1</span></h3>"
            "<p>Guardar, restaurar y explorar disquetes de 3½ (720 KB y "

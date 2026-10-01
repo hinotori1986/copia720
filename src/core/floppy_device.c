@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-const FloppyGeometry FLOPPY_360  = { "360 KB",  40, 2,  9, 512 };
+const FloppyGeometry FLOPPY_360  = { "360 KB",  80, 1,  9, 512 };
 const FloppyGeometry FLOPPY_720  = { "720 KB",  80, 2,  9, 512 };
 const FloppyGeometry FLOPPY_1440 = { "1.44 MB", 80, 2, 18, 512 };
 
