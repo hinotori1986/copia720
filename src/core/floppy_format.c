@@ -87,14 +87,22 @@ int floppy_format_disk(const char *device, const FloppyGeometry *g,
     for (int cyl = 0; cyl < g->cylinders && st == FMT_OK; cyl++) {
         for (int head = 0; head < g->heads; head++) {
             int rc = floppy_format_track(fd, g, cyl, head, apply_sliding);
+            done += track_bytes;
+            int idx = cyl * g->heads + head;
             if (rc != FMT_OK) {
+                if (progress) {
+                    FloppyProgress p = { done, total, cyl, head, idx, TRACK_BAD };
+                    progress(&p, user);
+                }
                 st = rc;
                 break;
             }
-            done += track_bytes;
-            if (progress && !progress(done, total, user)) {
-                st = FMT_ERR_CANCELLED;
-                break;
+            if (progress) {
+                FloppyProgress p = { done, total, cyl, head, idx, TRACK_OK };
+                if (!progress(&p, user)) {
+                    st = FMT_ERR_CANCELLED;
+                    break;
+                }
             }
         }
     }

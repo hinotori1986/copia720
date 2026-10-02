@@ -53,29 +53,47 @@ static int write_full(int fd, const uint8_t *buf, size_t count) {
     return 0;
 }
 
-/* Lee una pista (posición track_off, longitud track_bytes) reintentando. */
+/* Lee una pista reintentando. Devuelve el nº de reintentos que hicieron falta
+ * (0 = bien a la primera, >0 = hubo reintentos) o -1 si falló del todo. */
 static int read_track_retry(int fd, off_t track_off, uint8_t *dst,
                             size_t track_bytes, int retries) {
     for (int attempt = 0; attempt <= retries; attempt++) {
         if (lseek(fd, track_off, SEEK_SET) == (off_t)-1)
-            return -1;
+            continue;
         if (read_full(fd, dst, track_bytes) == 0)
-            return 0;
+            return attempt;   /* 0 si a la primera, attempt si tras reintentos */
         /* En un reintento conviene forzar reposicionamiento del cabezal;
          * el propio lseek de la siguiente vuelta lo hace. */
     }
     return -1;
 }
 
+/* Escribe una pista reintentando. Mismo convenio de retorno que la lectura. */
 static int write_track_retry(int fd, off_t track_off, const uint8_t *src,
                              size_t track_bytes, int retries) {
     for (int attempt = 0; attempt <= retries; attempt++) {
         if (lseek(fd, track_off, SEEK_SET) == (off_t)-1)
-            return -1;
+            continue;
         if (write_full(fd, src, track_bytes) == 0)
-            return 0;
+            return attempt;
     }
     return -1;
+}
+
+/* Rellena una FloppyProgress y llama al callback. Devuelve lo que devuelva el
+ * callback (false = cancelar). Si progress es NULL, devuelve true. */
+static bool report(FloppyProgressFn progress, void *user, size_t done,
+                   size_t total, const FloppyGeometry *g, int track_index,
+                   TrackStatus status) {
+    if (!progress) return true;
+    FloppyProgress p;
+    p.done = done;
+    p.total = total;
+    p.track_index = track_index;
+    p.cylinder = g->heads ? track_index / g->heads : track_index;
+    p.head = g->heads ? track_index % g->heads : 0;
+    p.status = status;
+    return progress(&p, user);
 }
 
 uint8_t *floppy_read_image(const char *device, const FloppyGeometry *g,
@@ -99,12 +117,17 @@ uint8_t *floppy_read_image(const char *device, const FloppyGeometry *g,
     int ntracks = g->cylinders * g->heads;
     for (int t = 0; t < ntracks; t++) {
         off_t off = (off_t)t * track_bytes;
-        if (read_track_retry(fd, off, buf + off, track_bytes, retries) != 0) {
+        int tries = read_track_retry(fd, off, buf + off, track_bytes, retries);
+        done_bytes += track_bytes;
+        TrackStatus ts;
+        if (tries < 0) {
+            /* pista fallida: la reportamos en rojo y abortamos */
+            report(progress, user, done_bytes, total, g, t, TRACK_BAD);
             st = FLOPPY_ERR_IO;
             break;
         }
-        done_bytes += track_bytes;
-        if (progress && !progress(done_bytes, total, user)) {
+        ts = (tries == 0) ? TRACK_OK : TRACK_RETRY;
+        if (!report(progress, user, done_bytes, total, g, t, ts)) {
             st = FLOPPY_ERR_CANCELLED;
             break;
         }
@@ -141,12 +164,15 @@ int floppy_write_image(const char *device, const FloppyGeometry *g,
     int ntracks = g->cylinders * g->heads;
     for (int t = 0; t < ntracks; t++) {
         off_t off = (off_t)t * track_bytes;
-        if (write_track_retry(fd, off, data + off, track_bytes, retries) != 0) {
+        int tries = write_track_retry(fd, off, data + off, track_bytes, retries);
+        done_bytes += track_bytes;
+        if (tries < 0) {
+            report(progress, user, done_bytes, total, g, t, TRACK_BAD);
             st = FLOPPY_ERR_IO;
             break;
         }
-        done_bytes += track_bytes;
-        if (progress && !progress(done_bytes, total, user)) {
+        TrackStatus ts = (tries == 0) ? TRACK_OK : TRACK_RETRY;
+        if (!report(progress, user, done_bytes, total, g, t, ts)) {
             st = FLOPPY_ERR_CANCELLED;
             break;
         }
@@ -183,17 +209,20 @@ int floppy_verify_image(const char *device, const FloppyGeometry *g,
     int ntracks = g->cylinders * g->heads;
     for (int t = 0; t < ntracks; t++) {
         off_t off = (off_t)t * track_bytes;
+        bool bad = false;
         if (lseek(fd, off, SEEK_SET) == (off_t)-1 ||
             read_full(fd, track, track_bytes) != 0) {
+            bad = true;
+        } else if (memcmp(track, data + off, track_bytes) != 0) {
+            bad = true;   /* difieren */
+        }
+        done_bytes += track_bytes;
+        if (bad) {
+            report(progress, user, done_bytes, total, g, t, TRACK_BAD);
             st = FLOPPY_ERR_IO;
             break;
         }
-        if (memcmp(track, data + off, track_bytes) != 0) {
-            st = FLOPPY_ERR_IO;   /* difieren */
-            break;
-        }
-        done_bytes += track_bytes;
-        if (progress && !progress(done_bytes, total, user)) {
+        if (!report(progress, user, done_bytes, total, g, t, TRACK_OK)) {
             st = FLOPPY_ERR_CANCELLED;
             break;
         }

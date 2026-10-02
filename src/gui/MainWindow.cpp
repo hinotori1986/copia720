@@ -364,7 +364,8 @@ void MainWindow::onCreateImageFromFloppy() {
 
     auto *worker = new FloppyWorker(FloppyOp::ReadImage, device, geom,
                                     {}, false, backend);
-    ProgressDialog dlg(worker, tr("Leyendo disquete"), this);
+    ProgressDialog dlg(worker, tr("Leyendo disquete"),
+                       geom.cylinders * geom.heads, this);
     dlg.exec();
 
     if (!dlg.succeeded()) {
@@ -484,7 +485,8 @@ void MainWindow::onWriteImageToFloppy() {
                                     doVerify, backend);
     ProgressDialog dlg(worker,
                        doFormat ? tr("Formateando y grabando")
-                                : tr("Grabando disquete"), this);
+                                : tr("Grabando disquete"),
+                       geom.cylinders * geom.heads, this);
     dlg.exec();
     worker->deleteLater();
 
@@ -555,7 +557,8 @@ void MainWindow::onExploreFloppy() {
         }
         auto *worker = new FloppyWorker(FloppyOp::ReadImage, device, geom,
                                         {}, false, backend);
-        ProgressDialog dlg(worker, tr("Leyendo disquete"), this);
+        ProgressDialog dlg(worker, tr("Leyendo disquete"),
+                           geom.cylinders * geom.heads, this);
         dlg.exec();
         if (!dlg.succeeded()) {
             QMessageBox::warning(this, tr("Explorar"),
@@ -612,7 +615,8 @@ void MainWindow::onFormatFloppy() {
         return;
 
     auto *worker = new FloppyWorker(FloppyOp::FormatDisk, device, geom);
-    ProgressDialog dlg(worker, tr("Formateando disquete"), this);
+    ProgressDialog dlg(worker, tr("Formateando disquete"),
+                       geom.cylinders * geom.heads, this);
     dlg.exec();
     worker->deleteLater();
 

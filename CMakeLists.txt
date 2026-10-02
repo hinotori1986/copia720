@@ -18,7 +18,7 @@
 #   Qt6:  sudo apt install qt6-base-dev cmake g++
 
 cmake_minimum_required(VERSION 3.16)
-project(copia720 VERSION 1.4 LANGUAGES C CXX)
+project(copia720 VERSION 1.5 LANGUAGES C CXX)
 
 # Hacer la versión accesible desde el código C++ como la macro COPIA720_VERSION.
 add_compile_definitions(COPIA720_VERSION="${PROJECT_VERSION}")
@@ -68,6 +68,7 @@ add_executable(copia720
     src/gui/ExplorerDialog.cpp
     src/gui/ProgressDialog.cpp
     src/gui/DiskButton.cpp
+    src/gui/TrackGrid.cpp
     src/gui/assets/recursos.qrc
 )
 target_include_directories(copia720 PRIVATE src/core src/gui)

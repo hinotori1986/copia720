@@ -150,27 +150,50 @@ typedef struct {
     size_t total;
     int cyl_seen;      /* nº de cilindros vistos, para estimar avance */
     int cylinders;     /* cilindros totales de la geometría */
+    int heads;         /* caras, para calcular el índice lineal de pista */
     bool cancelled;
 } GwProgressCtx;
 
-/* Interpreta líneas de `gw` para estimar el progreso. `gw` emite líneas por
- * pista tipo "T0.0", "T0.1", "T1.0"... Contamos cilindros distintos vistos. */
+/* Interpreta líneas de `gw` para estimar el progreso y el estado por pista.
+ * `gw` emite líneas por pista tipo "T0.0: IBM MFM (9/9 sectors)". Extraemos
+ * cilindro y cara, y si la línea indica sectores perdidos o errores, marcamos
+ * la pista como con reintentos o fallida. Es heurístico: si el formato de
+ * salida de gw cambia, el progreso será menos fino pero la operación sigue. */
 static bool gw_progress_line(const char *line, void *user) {
     GwProgressCtx *ctx = (GwProgressCtx *)user;
 
-    /* Detectar un marcador de pista "T<cil>.<cara>". Es heurístico y tolerante:
-     * si el formato de salida de gw cambia, simplemente el progreso será menos
-     * fino, pero la operación sigue. */
-    if (line[0] == 'T' && line[1] >= '0' && line[1] <= '9') {
-        int cyl = atoi(line + 1);
-        if (cyl + 1 > ctx->cyl_seen)
-            ctx->cyl_seen = cyl + 1;
+    if (!(line[0] == 'T' && line[1] >= '0' && line[1] <= '9'))
+        return true;   /* no es una línea de pista: la ignoramos */
+
+    int cyl = atoi(line + 1);
+    int head = 0;
+    const char *dot = strchr(line, '.');
+    if (dot) head = atoi(dot + 1);
+    if (cyl + 1 > ctx->cyl_seen)
+        ctx->cyl_seen = cyl + 1;
+
+    /* Estado de la pista según lo que diga gw. Buscamos indicios de problema. */
+    TrackStatus ts = TRACK_OK;
+    if (strstr(line, "Bad") || strstr(line, "bad") ||
+        strstr(line, "Ignoring") || strstr(line, "No sectors") ||
+        strstr(line, "0/") /* 0 de N sectores */) {
+        ts = TRACK_BAD;
+    } else if (strstr(line, "Retry") || strstr(line, "retry") ||
+               strstr(line, "warning")) {
+        ts = TRACK_RETRY;
     }
 
     if (ctx->progress && ctx->total && ctx->cylinders > 0) {
         size_t done = (size_t)((double)ctx->cyl_seen / ctx->cylinders * ctx->total);
         if (done > ctx->total) done = ctx->total;
-        if (!ctx->progress(done, ctx->total, ctx->user)) {
+        FloppyProgress p;
+        p.done = done;
+        p.total = ctx->total;
+        p.cylinder = cyl;
+        p.head = head;
+        p.track_index = cyl * (ctx->heads > 0 ? ctx->heads : 2) + head;
+        p.status = ts;
+        if (!ctx->progress(&p, ctx->user)) {
             ctx->cancelled = true;
             return false;   /* aborta run_streaming */
         }
@@ -217,7 +240,7 @@ uint8_t *gw_read_image(const FloppyGeometry *g, FloppyProgressFn progress,
     char *argv[] = { "gw", "read", fmtarg, tmp, NULL };
 
     GwProgressCtx ctx = { progress, user, floppy_total_bytes(g), 0,
-                          g->cylinders, false };
+                          g->cylinders, g->heads, false };
     int rc = run_streaming(argv, gw_progress_line, &ctx);
 
     if (ctx.cancelled || rc == -2) { st = FLOPPY_ERR_CANCELLED; unlink(tmp); goto done; }
@@ -269,7 +292,7 @@ int gw_write_image(const FloppyGeometry *g, const uint8_t *data, size_t len,
     char *argv[] = { "gw", "write", fmtarg, tmp, NULL };
 
     GwProgressCtx ctx = { progress, user, floppy_total_bytes(g), 0,
-                          g->cylinders, false };
+                          g->cylinders, g->heads, false };
     int rc = run_streaming(argv, gw_progress_line, &ctx);
     unlink(tmp);
 

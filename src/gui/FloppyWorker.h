@@ -52,7 +52,8 @@ public:
     const std::vector<uint8_t> &result() const { return data_; }
 
 signals:
-    void progress(qint64 done, qint64 total);
+    void progress(qint64 done, qint64 total, int trackIndex,
+                  int cylinder, int head, int status);
     void finishedOk(bool ok, const QString &message);
 
 protected:
@@ -60,7 +61,7 @@ protected:
 
 private:
     /* Puente para el callback C de progreso. */
-    static bool progressTrampoline(size_t done, size_t total, void *user);
+    static bool progressTrampoline(const FloppyProgress *p, void *user);
 
     FloppyOp op_;
     QString device_;

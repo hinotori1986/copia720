@@ -38,10 +38,30 @@ extern const FloppyGeometry FLOPPY_1440;
 /* Bytes totales de un formato. */
 size_t floppy_total_bytes(const FloppyGeometry *g);
 
-/* Callback de progreso: se invoca tras cada pista leída/escrita. `done` y
- * `total` van en bytes. Devolver false CANCELA la operación en curso.
- * Puede ser NULL. `user` es un puntero opaco del llamante. */
-typedef bool (*FloppyProgressFn)(size_t done, size_t total, void *user);
+/* Estado con que quedó la última pista procesada, para que la interfaz pueda
+ * pintarla (rejilla estilo X-Copy): leída/escrita a la primera, con reintentos,
+ * o fallida. TRACK_PENDING se usa al inicio, antes de tocar la pista. */
+typedef enum {
+    TRACK_PENDING = 0,  /* aún no procesada */
+    TRACK_OK      = 1,  /* correcta a la primera */
+    TRACK_RETRY   = 2,  /* correcta, pero tras uno o más reintentos */
+    TRACK_BAD     = 3,  /* no se pudo leer/escribir */
+} TrackStatus;
+
+/* Información de progreso que recibe el callback tras cada pista. */
+typedef struct {
+    size_t      done;      /* bytes procesados hasta ahora */
+    size_t      total;     /* bytes totales */
+    int         cylinder;  /* cilindro de la última pista (0..cilindros-1) */
+    int         head;      /* cara de la última pista (0/1) */
+    int         track_index; /* índice lineal de pista (cyl*heads + head) */
+    TrackStatus status;    /* cómo quedó esa pista */
+} FloppyProgress;
+
+/* Callback de progreso: se invoca tras cada pista leída/escrita, con el detalle
+ * en `p`. Devolver false CANCELA la operación en curso. Puede ser NULL.
+ * `user` es un puntero opaco del llamante. */
+typedef bool (*FloppyProgressFn)(const FloppyProgress *p, void *user);
 
 /* Resultado de una operación sobre el dispositivo. */
 typedef enum {

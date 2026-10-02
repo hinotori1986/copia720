@@ -16,9 +16,12 @@ FloppyWorker::FloppyWorker(FloppyOp op, QString device, FloppyGeometry geom,
     : QThread(parent), op_(op), device_(std::move(device)), geom_(geom),
       data_(std::move(data)), verify_(verify), backend_(backend) {}
 
-bool FloppyWorker::progressTrampoline(size_t done, size_t total, void *user) {
+bool FloppyWorker::progressTrampoline(const FloppyProgress *p, void *user) {
     auto *self = static_cast<FloppyWorker *>(user);
-    emit self->progress(static_cast<qint64>(done), static_cast<qint64>(total));
+    emit self->progress(static_cast<qint64>(p->done),
+                        static_cast<qint64>(p->total),
+                        p->track_index, p->cylinder, p->head,
+                        static_cast<int>(p->status));
     return !self->cancel_.load();   // false → el núcleo cancela
 }
 
@@ -43,9 +46,14 @@ static int writeAndFormat(const char *device, const FloppyGeometry *g,
 
     for (int cyl = 0; cyl < g->cylinders && st == FLOPPY_OK; cyl++) {
         for (int head = 0; head < g->heads; head++) {
+            int idx = cyl * g->heads + head;
             // 1) formatear la pista
             int frc = floppy_format_track(fd, g, cyl, head, /*sliding*/false);
             if (frc != FMT_OK) {
+                if (progress) {
+                    FloppyProgress p = { done, total, cyl, head, idx, TRACK_BAD };
+                    progress(&p, user);
+                }
                 st = FLOPPY_ERR_IO;
                 break;
             }
@@ -59,12 +67,21 @@ static int writeAndFormat(const char *device, const FloppyGeometry *g,
                 if (w < 0) { st = FLOPPY_ERR_IO; break; }
                 put += (size_t)w;
             }
-            if (st != FLOPPY_OK) break;
+            if (st != FLOPPY_OK) {
+                if (progress) {
+                    FloppyProgress p = { done, total, cyl, head, idx, TRACK_BAD };
+                    progress(&p, user);
+                }
+                break;
+            }
 
             done += track_bytes;
-            if (progress && !progress(done, total, user)) {
-                st = FLOPPY_ERR_CANCELLED;
-                break;
+            if (progress) {
+                FloppyProgress p = { done, total, cyl, head, idx, TRACK_OK };
+                if (!progress(&p, user)) {
+                    st = FLOPPY_ERR_CANCELLED;
+                    break;
+                }
             }
         }
     }
